@@ -31,6 +31,45 @@ jobs:
         shell: pwsh
         run: ./tools/Apply-FinderUi-CI.ps1
 
+      - name: Validate real FinderSpan integrations
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $xamlPath = Join-Path $env:GITHUB_WORKSPACE 'src\Span\Span\MainWindow.xaml'
+          $chromePath = Join-Path $env:GITHUB_WORKSPACE 'src\Span\Span\MainWindow.FinderChrome.cs'
+          $xaml = Get-Content -LiteralPath $xamlPath -Raw
+          $chrome = Get-Content -LiteralPath $chromePath -Raw
+
+          if ($xaml.Contains('OnFinderTagClick')) {
+            throw 'Decorative Finder Tags handlers are still present in generated XAML.'
+          }
+          if ($xaml.Contains('Text="AirDrop"')) {
+            throw 'Fake AirDrop entry is still present in generated XAML.'
+          }
+
+          foreach ($required in @(
+            'x:Name="FinderQuickShareButton"',
+            'x:Name="FinderQuickShareSidebarItem"',
+            'Tapped="OnFinderQuickShareSidebarTapped"',
+            'x:Name="FavoritesFlatList"'
+          )) {
+            if (-not $xaml.Contains($required)) {
+              throw "FinderSpan integration validation failed. Missing XAML marker: $required"
+            }
+          }
+
+          foreach ($required in @(
+            'FindQuickShareTarget()',
+            'FinderQuickShareSidebarItem.Visibility = visibility',
+            'OnFinderQuickShareSidebarTapped'
+          )) {
+            if (-not $chrome.Contains($required)) {
+              throw "FinderSpan integration validation failed. Missing code marker: $required"
+            }
+          }
+
+          Write-Host 'FinderSpan integration validation passed: real sidebar retained, fake AirDrop/Tags removed, Quick Share wired.'
+
       - name: Set rolling package version
         shell: pwsh
         run: |
