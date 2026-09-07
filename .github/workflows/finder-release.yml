@@ -61,30 +61,43 @@ jobs:
             throw "Signing certificate subject '$($cert.Subject)' does not match manifest publisher '$publisher'."
           }
 
-          $passwordText = 'FinderSpan-CI-2026'
-          $password = ConvertTo-SecureString -String $passwordText -Force -AsPlainText
+          $pfxPasswordText = [Guid]::NewGuid().ToString('N')
+          Write-Host "::add-mask::$pfxPasswordText"
+          $pfxPassword = ConvertTo-SecureString -String $pfxPasswordText -Force -AsPlainText
           $pfxPath = Join-Path $env:GITHUB_WORKSPACE 'src\Span\Span\FinderSpan_CI.pfx'
-          Export-PfxCertificate -Cert $cert -FilePath $pfxPath -Password $password | Out-Null
+          Export-PfxCertificate -Cert $cert -FilePath $pfxPath -Password $pfxPassword | Out-Null
           Export-Certificate -Cert $cert -FilePath "$env:GITHUB_WORKSPACE\dist\FinderSpan-Dev.cer" | Out-Null
           "FINDERSPAN_CERT_THUMBPRINT=$($cert.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "FINDERSPAN_PFX_PASSWORD=$pfxPasswordText" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Build signed x64 MSIX
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\dist\msix" | Out-Null
+          $msbuildLog = Join-Path $env:GITHUB_WORKSPACE 'msbuild.log'
           msbuild src\Span\Span\Span.csproj /restore /m `
             /p:Configuration=Release `
             /p:Platform=x64 `
             /p:GenerateAppxPackageOnBuild=true `
             /p:AppxBundle=Never `
             /p:PackageCertificateKeyFile=FinderSpan_CI.pfx `
-            /p:PackageCertificatePassword=FinderSpan-CI-2026 `
+            /p:PackageCertificatePassword=$env:FINDERSPAN_PFX_PASSWORD `
             /p:PackageCertificateThumbprint=$env:FINDERSPAN_CERT_THUMBPRINT `
-            /p:AppxPackageDir="$env:GITHUB_WORKSPACE\dist\msix\"
+            /p:AppxPackageDir="$env:GITHUB_WORKSPACE\dist\msix\" `
+            /fileLogger `
+            /fileLoggerParameters:"LogFile=$msbuildLog;Verbosity=diagnostic"
           if ($LASTEXITCODE -ne 0) {
             throw "MSBuild failed with exit code $LASTEXITCODE."
           }
+
+      - name: Upload MSBuild diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: msbuild-diagnostics
+          path: msbuild.log
+          if-no-files-found: warn
 
       - name: Prepare release files
         shell: pwsh
