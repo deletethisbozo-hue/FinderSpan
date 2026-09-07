@@ -31,6 +31,24 @@ jobs:
         shell: pwsh
         run: ./tools/Apply-FinderUi-CI.ps1
 
+      - name: Set rolling package version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $manifestPath = Join-Path $env:GITHUB_WORKSPACE 'src\Span\Span\Package.appxmanifest'
+          $version = "2.0.${{ github.run_number }}.0"
+          $text = Get-Content -LiteralPath $manifestPath -Raw
+          $updated = [regex]::Replace(
+            $text,
+            '(<Identity[\s\S]*?\bVersion=")[^"]+("\s*/>)',
+            "`$1$version`$2",
+            1)
+          if ($updated -eq $text) {
+            throw 'Could not update Package.appxmanifest version.'
+          }
+          [IO.File]::WriteAllText($manifestPath, $updated, (New-Object Text.UTF8Encoding($false)))
+          Write-Host "FinderSpan package version: $version"
+
       - name: Create FinderSpan development signing certificate
         shell: pwsh
         run: |
