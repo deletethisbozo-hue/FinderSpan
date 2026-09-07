@@ -116,10 +116,12 @@ jobs:
 
           INSTALLATION
           1. Double-click FinderSpan-Dev.cer.
-          2. Choose Install Certificate -> Current User.
+          2. Choose Install Certificate -> Local Machine (administrator permission required).
           3. Choose "Place all certificates in the following store" -> Trusted People.
           4. Finish the certificate wizard.
-          5. Double-click FinderSpan-x64.msix and choose Install.
+          5. Close any open App Installer window, then double-click FinderSpan-x64.msix and choose Install.
+
+          IMPORTANT: App Installer validates development signing certificates against the Local Machine certificate store. Installing this certificate only for Current User will not make the MSIX trusted.
 
           The certificate only signs this development build. The private signing key is generated ephemerally by GitHub Actions and is not included in the release.
 
@@ -155,7 +157,7 @@ jobs:
             FinderSpan is an independent Finder-inspired UI fork of SPAN Finder.
 
             Recommended download: **FinderSpan-Windows-x64.zip**.
-            Extract it, trust the included `FinderSpan-Dev.cer` for the **Current User / Trusted People** certificate store, then install `FinderSpan-x64.msix`.
+            Extract it, install the included `FinderSpan-Dev.cer` into **Local Machine / Trusted People** (administrator permission required), close any open App Installer window, then install `FinderSpan-x64.msix`.
 
             This is a development-signed sideload build. The private signing key is generated ephemerally for each CI run and is never published.
 
