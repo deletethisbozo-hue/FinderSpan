@@ -37,16 +37,34 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $manifestPath = Join-Path $env:GITHUB_WORKSPACE 'src\Span\Span\Package.appxmanifest'
           $version = "2.0.${{ github.run_number }}.0"
-          $text = Get-Content -LiteralPath $manifestPath -Raw
-          $updated = [regex]::Replace(
-            $text,
-            '(<Identity[\s\S]*?\bVersion=")[^"]+("\s*/>)',
-            "`$1$version`$2",
-            1)
-          if ($updated -eq $text) {
-            throw 'Could not update Package.appxmanifest version.'
+
+          [xml]$manifest = Get-Content -LiteralPath $manifestPath -Raw
+          $identity = $manifest.Package.Identity
+          if ($null -eq $identity) {
+            throw 'Package.appxmanifest does not contain Identity.'
           }
-          [IO.File]::WriteAllText($manifestPath, $updated, (New-Object Text.UTF8Encoding($false)))
+          $identity.SetAttribute('Version', $version)
+
+          $xmlSettings = [System.Xml.XmlWriterSettings]::new()
+          $xmlSettings.Encoding = [System.Text.UTF8Encoding]::new($false)
+          $xmlSettings.Indent = $true
+          $xmlSettings.NewLineChars = "`r`n"
+          $xmlSettings.NewLineHandling = [System.Xml.NewLineHandling]::Replace
+          $writer = [System.Xml.XmlWriter]::Create($manifestPath, $xmlSettings)
+          try {
+            $manifest.Save($writer)
+          }
+          finally {
+            $writer.Dispose()
+          }
+
+          [xml]$verify = Get-Content -LiteralPath $manifestPath -Raw
+          if ($verify.Package.Identity.Version -ne $version) {
+            throw "Manifest version verification failed. Expected $version, got '$($verify.Package.Identity.Version)'."
+          }
+          if ([string]::IsNullOrWhiteSpace($verify.Package.Identity.Publisher)) {
+            throw 'Manifest publisher was lost while updating the version.'
+          }
           Write-Host "FinderSpan package version: $version"
 
       - name: Create FinderSpan development signing certificate
