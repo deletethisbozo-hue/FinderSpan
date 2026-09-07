@@ -37,9 +37,17 @@ jobs:
           $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\dist" | Out-Null
 
+          $manifestPath = Join-Path $env:GITHUB_WORKSPACE 'src\Span\Span\Package.appxmanifest'
+          [xml]$packageManifest = Get-Content -LiteralPath $manifestPath
+          $publisher = $packageManifest.Package.Identity.Publisher
+          if ([string]::IsNullOrWhiteSpace($publisher)) {
+            throw 'Package.appxmanifest does not contain Identity Publisher.'
+          }
+          Write-Host "Creating development certificate for MSIX publisher: $publisher"
+
           $cert = New-SelfSignedCertificate `
             -Type Custom `
-            -Subject 'CN=FinderSpan' `
+            -Subject $publisher `
             -FriendlyName 'FinderSpan Development Signing' `
             -CertStoreLocation 'Cert:\CurrentUser\My' `
             -KeyAlgorithm RSA `
@@ -48,6 +56,10 @@ jobs:
             -KeyExportPolicy Exportable `
             -KeyUsage DigitalSignature `
             -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3')
+
+          if ($cert.Subject -ne $publisher) {
+            throw "Signing certificate subject '$($cert.Subject)' does not match manifest publisher '$publisher'."
+          }
 
           $passwordText = 'FinderSpan-CI-2026'
           $password = ConvertTo-SecureString -String $passwordText -Force -AsPlainText
@@ -59,6 +71,7 @@ jobs:
       - name: Build signed x64 MSIX
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\dist\msix" | Out-Null
           msbuild src\Span\Span\Span.csproj /restore /m `
             /p:Configuration=Release `
@@ -69,6 +82,9 @@ jobs:
             /p:PackageCertificatePassword=FinderSpan-CI-2026 `
             /p:PackageCertificateThumbprint=$env:FINDERSPAN_CERT_THUMBPRINT `
             /p:AppxPackageDir="$env:GITHUB_WORKSPACE\dist\msix\"
+          if ($LASTEXITCODE -ne 0) {
+            throw "MSBuild failed with exit code $LASTEXITCODE."
+          }
 
       - name: Prepare release files
         shell: pwsh
