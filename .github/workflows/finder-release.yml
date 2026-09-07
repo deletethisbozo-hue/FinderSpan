@@ -79,6 +79,9 @@ jobs:
           msbuild src\Span\Span\Span.csproj /restore /m `
             /p:Configuration=Release `
             /p:Platform=x64 `
+            /p:RuntimeIdentifier=win-x64 `
+            /p:SelfContained=true `
+            /p:PublishTrimmed=false `
             /p:GenerateAppxPackageOnBuild=true `
             /p:AppxBundle=Never `
             /p:PackageCertificateKeyFile=FinderSpan_CI.pfx `
