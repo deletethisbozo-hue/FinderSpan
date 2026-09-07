@@ -20,6 +20,7 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           path = Path('tools/Apply-FinderUi-CI.ps1')
           text = path.read_text(encoding='utf-8-sig')
@@ -67,13 +68,15 @@ jobs:
               raise SystemExit('Finder chrome using anchor not found')
           text = text.replace(using_anchor, using_anchor + '\nusing Microsoft.UI.Xaml.Input;', 1)
 
-          old_visibility = '''    private void UpdateFinderQuickShareVisibility(){
-            try {
-              FinderQuickShareButton.Visibility = string.IsNullOrWhiteSpace(_finderQuickShareTarget)
-                ? Visibility.Collapsed
-                : Visibility.Visible;
-            } catch { }
-          }'''
+          visibility_pattern = re.compile(
+              r'    private void UpdateFinderQuickShareVisibility\(\)\{\n'
+              r'      try \{\n'
+              r'        FinderQuickShareButton\.Visibility = string\.IsNullOrWhiteSpace\(_finderQuickShareTarget\)\n'
+              r'          \? Visibility\.Collapsed\n'
+              r'          : Visibility\.Visible;\n'
+              r'      \} catch \{ \}\n'
+              r'    \}'
+          )
           new_visibility = '''    private void UpdateFinderQuickShareVisibility(){
             try {
               var visibility = string.IsNullOrWhiteSpace(_finderQuickShareTarget)
@@ -83,24 +86,15 @@ jobs:
               FinderQuickShareSidebarItem.Visibility = visibility;
             } catch { }
           }'''
-          if old_visibility not in text:
-              raise SystemExit('Quick Share visibility anchor not found')
-          text = text.replace(old_visibility, new_visibility, 1)
+          text, count = visibility_pattern.subn(lambda _: new_visibility, text, count=1)
+          if count != 1:
+              raise SystemExit(f'Quick Share visibility replacement count: {count}')
 
-          old_click = '''    private void OnFinderQuickShareClick(object sender, RoutedEventArgs e){
-            try {
-              _finderQuickShareTarget ??= FindQuickShareTarget();
-              if(string.IsNullOrWhiteSpace(_finderQuickShareTarget)) {
-                FinderQuickShareButton.Visibility = Visibility.Collapsed;
-                ViewModel.ShowToast("Quick Share is not installed.");
-                return;
-              }
-              Process.Start(new ProcessStartInfo(_finderQuickShareTarget) { UseShellExecute = true });
-            } catch(Exception ex){
-              Helpers.DebugLogger.Log($"[FinderQuickShare] {ex.Message}");
-              ViewModel.ShowToast("Could not open Quick Share.");
-            }
-          }'''
+          click_pattern = re.compile(
+              r'    private void OnFinderQuickShareClick\(object sender, RoutedEventArgs e\)\{.*?\n    \}\n\n'
+              r'(?=    private static string\? FindQuickShareTarget\(\))',
+              re.S,
+          )
           new_click = '''    private void LaunchFinderQuickShare(){
             try {
               _finderQuickShareTarget ??= FindQuickShareTarget();
@@ -120,10 +114,12 @@ jobs:
             => LaunchFinderQuickShare();
 
           private void OnFinderQuickShareSidebarTapped(object sender, TappedRoutedEventArgs e)
-            => LaunchFinderQuickShare();'''
-          if old_click not in text:
-              raise SystemExit('Quick Share click anchor not found')
-          text = text.replace(old_click, new_click, 1)
+            => LaunchFinderQuickShare();
+
+          '''
+          text, count = click_pattern.subn(lambda _: new_click, text, count=1)
+          if count != 1:
+              raise SystemExit(f'Quick Share click replacement count: {count}')
 
           path.write_text(text, encoding='utf-8', newline='\n')
 
@@ -137,7 +133,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tools/Apply-FinderUi-CI.ps1 src/Span/Span/MainWindow.FinderTagCompat.cs
+          git add -A tools/Apply-FinderUi-CI.ps1 src/Span/Span/MainWindow.FinderTagCompat.cs
           git diff --cached --check
           git commit -m "fix: integrate Quick Share into real Finder sidebar"
           git push
