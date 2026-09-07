@@ -13,6 +13,8 @@ $main = Join-Path $src "MainWindow.xaml"
 $manifest = Join-Path $src "Package.appxmanifest"
 $details = Join-Path $src "Views/DetailsModeView.xaml"
 $detailsCs = Join-Path $src "Views/DetailsModeView.xaml.cs"
+$mainVm = Join-Path $src "ViewModels/MainViewModel.cs"
+$settingsSvc = Join-Path $src "Services/SettingsService.cs"
 
 # Normalize literal newline sequences emitted by the base patch into valid C#.
 $t = ReadText $mainCs
@@ -24,8 +26,33 @@ foreach($pair in @(
 }
 WriteText $mainCs $t
 
-# Normalize visual details that are intentionally applied after the broad base patch.
+# -----------------------------------------------------------------------------
+# Keep the Finder look, but restore the REAL SpanFinder sidebar underneath.
+# The previous skin inserted a static mock sidebar (AirDrop, fake Tags, hard-coded
+# iCloud/OneDrive entries) and hid the original dynamic sidebar. Remove the mock
+# completely and unhide the original so Favorites drag/drop, real cloud drives,
+# local/network drives and context menus keep working.
+# -----------------------------------------------------------------------------
 $t = ReadText $main
+
+# Remove the injected static Finder sidebar ScrollViewer.
+$t = [regex]::Replace(
+  $t,
+  '(?s)\s*<ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">\s*<StackPanel Padding="6,8,6,8" Spacing="0">.*?</ScrollViewer>\s*(?=<ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Visibility="Collapsed")',
+  "`r`n                ",
+  1)
+
+# Re-enable the original dynamic sidebar and make its spacing Finder-like.
+$t = $t.Replace(
+  '<ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Visibility="Collapsed"',
+  '<ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"')
+$t = $t.Replace('<StackPanel Padding="0,12">','<StackPanel Padding="6,8">')
+$t = $t.Replace('<Grid Height="28" Padding="12,0" Background="Transparent"','<Grid Height="27" Margin="3,1" Padding="8,0" Background="Transparent"')
+$t = $t.Replace('<Grid Height="26" Padding="12,0,8,0"','<Grid Height="26" Margin="3,1" Padding="8,0,6,0"')
+$t = $t.Replace('Margin="16,0,16,8"','Margin="8,6,8,5"')
+$t = $t.Replace('Margin="12,12"','Margin="8,6"')
+
+# Keep visual polish from the Finder skin.
 $t = $t.Replace('Foreground="#FFD54F"', 'Foreground="#4DA3E8"')
 $t = [regex]::Replace(
   $t,
@@ -44,7 +71,26 @@ $t = [regex]::Replace(
   1)
 WriteText $main $t
 
-# Enforce Finder list semantics: Name / Date Modified / Size / Kind.
+# -----------------------------------------------------------------------------
+# Restore original navigation behavior. The skin had forced Details view and
+# disabled preview globally, which made the app feel less like SpanFinder and
+# required manually choosing Miller Columns. Keep the Finder visual skin while
+# preserving the upstream behavior/preferences.
+# -----------------------------------------------------------------------------
+$t = ReadText $mainVm
+$t = $t.Replace('private ViewMode _leftViewMode = ViewMode.Details;','private ViewMode _leftViewMode = ViewMode.MillerColumns;')
+$t = $t.Replace('private ViewMode _rightViewMode = ViewMode.Details;','private ViewMode _rightViewMode = ViewMode.MillerColumns;')
+$t = $t.Replace('private ViewMode _currentViewMode = ViewMode.Details;','private ViewMode _currentViewMode = ViewMode.MillerColumns;')
+$t = $t.Replace('private bool _isLeftPreviewEnabled = false;','private bool _isLeftPreviewEnabled = true;')
+$t = $t.Replace('private bool _isRightPreviewEnabled = false;','private bool _isRightPreviewEnabled = true;')
+WriteText $mainVm $t
+
+$t = ReadText $settingsSvc
+$t = $t.Replace('get => Get("DefaultViewMode", 1); // FinderSpan default = Details','get => Get("DefaultViewMode", 0); // FinderSpan default = MillerColumns')
+WriteText $settingsSvc $t
+
+# Enforce Finder list semantics when the user explicitly chooses Details view:
+# Name / Date Modified / Size / Kind.
 $t = ReadText $details
 $t = [regex]::Replace(
   $t,
@@ -80,7 +126,6 @@ $t = [regex]::Replace(
   'TypeHeaderButton\.Content\s*=\s*_loc\.Get\("Type"\);\s*SizeHeaderButton\.Content\s*=\s*_loc\.Get\("Size"\);',
   'TypeHeaderButton.Content = _loc.Get("Size");`r`n            SizeHeaderButton.Content = "Kind";',
   1)
-# Convert the replacement's literal CRLF marker if regex replacement preserved it literally.
 $t = $t.Replace('TypeHeaderButton.Content = _loc.Get("Size");`r`n            SizeHeaderButton.Content = "Kind";', "TypeHeaderButton.Content = _loc.Get(`"Size`");`r`n            SizeHeaderButton.Content = `"Kind`";")
 WriteText $detailsCs $t
 
@@ -93,4 +138,4 @@ $t = $t.Replace('<PublisherDisplayName>LumiBear Studio</PublisherDisplayName>', 
 $t = $t.Replace('Alias="spanfinder.exe"', 'Alias="finderspan.exe"')
 WriteText $manifest $t
 
-Write-Host "FinderSpan classic Finder CI patch normalized and package identity separated from upstream." -ForegroundColor Green
+Write-Host "FinderSpan Finder skin applied with dynamic sidebar and original navigation behavior restored." -ForegroundColor Green
