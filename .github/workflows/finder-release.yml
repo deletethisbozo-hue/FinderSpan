@@ -31,6 +31,31 @@ jobs:
         shell: pwsh
         run: ./tools/Apply-FinderUi-CI.ps1
 
+      - name: Create FinderSpan development signing certificate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\dist" | Out-Null
+
+          $cert = New-SelfSignedCertificate `
+            -Type Custom `
+            -Subject 'CN=FinderSpan' `
+            -FriendlyName 'FinderSpan Development Signing' `
+            -CertStoreLocation 'Cert:\CurrentUser\My' `
+            -KeyAlgorithm RSA `
+            -KeyLength 2048 `
+            -HashAlgorithm SHA256 `
+            -KeyExportPolicy Exportable `
+            -KeyUsage DigitalSignature `
+            -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3')
+
+          $passwordText = 'FinderSpan-CI-2026'
+          $password = ConvertTo-SecureString -String $passwordText -Force -AsPlainText
+          $pfxPath = Join-Path $env:GITHUB_WORKSPACE 'src\Span\Span\FinderSpan_CI.pfx'
+          Export-PfxCertificate -Cert $cert -FilePath $pfxPath -Password $password | Out-Null
+          Export-Certificate -Cert $cert -FilePath "$env:GITHUB_WORKSPACE\dist\FinderSpan-Dev.cer" | Out-Null
+          "FINDERSPAN_CERT_THUMBPRINT=$($cert.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Build signed x64 MSIX
         shell: pwsh
         run: |
@@ -40,6 +65,9 @@ jobs:
             /p:Platform=x64 `
             /p:GenerateAppxPackageOnBuild=true `
             /p:AppxBundle=Never `
+            /p:PackageCertificateKeyFile=FinderSpan_CI.pfx `
+            /p:PackageCertificatePassword=FinderSpan-CI-2026 `
+            /p:PackageCertificateThumbprint=$env:FINDERSPAN_CERT_THUMBPRINT `
             /p:AppxPackageDir="$env:GITHUB_WORKSPACE\dist\msix\"
 
       - name: Prepare release files
@@ -47,10 +75,30 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $dist = Join-Path $env:GITHUB_WORKSPACE 'dist'
-          $msix = Get-ChildItem -Path $dist -Recurse -Filter *.msix | Select-Object -First 1
+          $msix = Get-ChildItem -Path (Join-Path $dist 'msix') -Recurse -Filter *.msix | Select-Object -First 1
           if (-not $msix) { throw 'MSIX package was not produced.' }
           Copy-Item $msix.FullName (Join-Path $dist 'FinderSpan-x64.msix') -Force
-          Compress-Archive -Path (Join-Path $dist 'FinderSpan-x64.msix') -DestinationPath (Join-Path $dist 'FinderSpan-Windows-x64.zip') -Force
+
+          @'
+          FinderSpan Windows x64
+
+          INSTALLATION
+          1. Double-click FinderSpan-Dev.cer.
+          2. Choose Install Certificate -> Current User.
+          3. Choose "Place all certificates in the following store" -> Trusted People.
+          4. Finish the certificate wizard.
+          5. Double-click FinderSpan-x64.msix and choose Install.
+
+          The certificate only signs this development build. The private signing key is generated ephemerally by GitHub Actions and is not included in the release.
+
+          FinderSpan is an independent GPL-3.0 fork of SPAN Finder and is not affiliated with Apple Inc.
+          '@ | Set-Content -Path (Join-Path $dist 'INSTALL.txt') -Encoding UTF8
+
+          Compress-Archive -Path `
+            (Join-Path $dist 'FinderSpan-x64.msix'), `
+            (Join-Path $dist 'FinderSpan-Dev.cer'), `
+            (Join-Path $dist 'INSTALL.txt') `
+            -DestinationPath (Join-Path $dist 'FinderSpan-Windows-x64.zip') -Force
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -59,6 +107,8 @@ jobs:
           path: |
             dist/FinderSpan-Windows-x64.zip
             dist/FinderSpan-x64.msix
+            dist/FinderSpan-Dev.cer
+            dist/INSTALL.txt
           if-no-files-found: error
 
       - name: Publish rolling prerelease
@@ -72,10 +122,14 @@ jobs:
           body: |
             FinderSpan is an independent Finder-inspired UI fork of SPAN Finder.
 
-            Download FinderSpan-Windows-x64.zip or FinderSpan-x64.msix.
-            This is a sideload development build, so Windows may require trusting the package signing certificate before installation.
+            Recommended download: **FinderSpan-Windows-x64.zip**.
+            Extract it, trust the included `FinderSpan-Dev.cer` for the **Current User / Trusted People** certificate store, then install `FinderSpan-x64.msix`.
+
+            This is a development-signed sideload build. The private signing key is generated ephemerally for each CI run and is never published.
 
             GPL-3.0 source is available in this repository.
           files: |
             dist/FinderSpan-Windows-x64.zip
             dist/FinderSpan-x64.msix
+            dist/FinderSpan-Dev.cer
+            dist/INSTALL.txt
