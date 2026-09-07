@@ -1,0 +1,47 @@
+name: Build FinderSpan
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - '.github/workflows/finder-release.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build
+        shell: pwsh
+        run: |
+          dotnet restore src/Span/Span.sln
+          dotnet build src/Span/Span.sln -c Release -p:Platform=x64
+      - name: Collect artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Get-ChildItem -Path src/Span -Recurse -Include *.msix,*.msixbundle,*.exe,*.zip | ForEach-Object { Copy-Item $_.FullName dist -Force }
+          if (-not (Get-ChildItem dist -ErrorAction SilentlyContinue)) {
+            Compress-Archive -Path src/Span/Span/bin/x64/Release/* -DestinationPath dist/FinderSpan-portable.zip -Force
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FinderSpan-Windows-x64
+          path: dist/*
+      - name: Create rolling release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: finder-latest
+          name: FinderSpan latest
+          prerelease: true
+          files: dist/*
