@@ -220,6 +220,16 @@ jobs:
             dist/INSTALL.txt
           if-no-files-found: error
 
+      - name: Move rolling release tag to built commit
+        if: github.ref == 'refs/heads/main'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git push --force origin "${env:GITHUB_SHA}:refs/tags/finder-latest"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not move finder-latest tag to $env:GITHUB_SHA."
+          }
+
       - name: Publish rolling prerelease
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
