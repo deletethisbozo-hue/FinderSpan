@@ -78,9 +78,37 @@ $t = $t.Replace(
   'ToolTipService.ToolTip="Share / copy path" Click="OnFinderShareClick"',
   'x:Name="FinderQuickShareButton" Visibility="Collapsed" ToolTipService.ToolTip="Quick Share" Click="OnFinderQuickShareClick"')
 
-# Folder tags exist in upstream context menus, but the Finder toolbar control is
-# confusing and folder-only. Do not advertise it as a universal Finder feature.
-$t = $t.Replace('ToolTipService.ToolTip="Tags">','Visibility="Collapsed" ToolTipService.ToolTip="Tags">')
+# Remove the decorative Finder-style Tags button completely. Upstream's real
+# folder-tag support remains available from its native context menus where valid.
+$t = [regex]::Replace(
+  $t,
+  '(?s)\s*<Button Style="\{StaticResource UnifiedButtonStyle\}" Width="34" Height="28" MinWidth="34" Padding="0" ToolTipService\.ToolTip="Tags">.*?</Button>\s*',
+  "`r`n",
+  1)
+
+# Quick Share replaces AirDrop semantically on Windows. Put it at the top of the
+# real Favorites section, but keep it hidden unless Google Quick Share is found.
+$quickShareSidebar = @'
+                        <Grid x:Name="FinderQuickShareSidebarItem" Height="27" Margin="3,1" Padding="8,0"
+                              Background="Transparent" Visibility="Collapsed"
+                              Tapped="OnFinderQuickShareSidebarTapped"
+                              PointerEntered="OnSidebarItemPointerEntered" PointerExited="OnSidebarItemPointerExited"
+                              PointerPressed="OnSidebarItemPointerPressed" PointerReleased="OnSidebarItemPointerReleased"
+                              ToolTipService.ToolTip="Quick Share">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <FontIcon Grid.Column="0" Glyph="&#xE72D;" FontSize="16" Foreground="#4DA3E8"
+                                      VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock Grid.Column="1" Text="Quick Share"
+                                       FontSize="{Binding ItemFontSize, Source={StaticResource FontScale}}"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        </Grid>
+'@
+$favoriteListAnchor = '                        <!-- Flat Favorites List (default, no tree expansion) -->'
+if (-not $t.Contains($favoriteListAnchor)) { throw 'Finder Quick Share sidebar anchor not found.' }
+$t = $t.Replace($favoriteListAnchor, $quickShareSidebar + "`r`n`r`n" + $favoriteListAnchor)
 
 # Visual polish retained from the Finder skin.
 $t = $t.Replace('Foreground="#FFD54F"', 'Foreground="#4DA3E8"')
@@ -191,6 +219,7 @@ using System.Linq;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 
 namespace Span {
   public sealed partial class MainWindow {
@@ -239,27 +268,35 @@ namespace Span {
     }
 
     private void UpdateFinderQuickShareVisibility(){
-      try {
-        FinderQuickShareButton.Visibility = string.IsNullOrWhiteSpace(_finderQuickShareTarget)
-          ? Visibility.Collapsed
-          : Visibility.Visible;
-      } catch { }
-    }
+  try {
+    var visibility = string.IsNullOrWhiteSpace(_finderQuickShareTarget)
+      ? Visibility.Collapsed
+      : Visibility.Visible;
+    FinderQuickShareButton.Visibility = visibility;
+    FinderQuickShareSidebarItem.Visibility = visibility;
+  } catch { }
+}
 
-    private void OnFinderQuickShareClick(object sender, RoutedEventArgs e){
-      try {
-        _finderQuickShareTarget ??= FindQuickShareTarget();
-        if(string.IsNullOrWhiteSpace(_finderQuickShareTarget)) {
-          FinderQuickShareButton.Visibility = Visibility.Collapsed;
-          ViewModel.ShowToast("Quick Share is not installed.");
-          return;
-        }
-        Process.Start(new ProcessStartInfo(_finderQuickShareTarget) { UseShellExecute = true });
-      } catch(Exception ex){
-        Helpers.DebugLogger.Log($"[FinderQuickShare] {ex.Message}");
-        ViewModel.ShowToast("Could not open Quick Share.");
-      }
+    private void LaunchFinderQuickShare(){
+  try {
+    _finderQuickShareTarget ??= FindQuickShareTarget();
+    if(string.IsNullOrWhiteSpace(_finderQuickShareTarget)) {
+      UpdateFinderQuickShareVisibility();
+      ViewModel.ShowToast("Quick Share is not installed.");
+      return;
     }
+    Process.Start(new ProcessStartInfo(_finderQuickShareTarget) { UseShellExecute = true });
+  } catch(Exception ex){
+    Helpers.DebugLogger.Log($"[FinderQuickShare] {ex.Message}");
+    ViewModel.ShowToast("Could not open Quick Share.");
+  }
+}
+
+private void OnFinderQuickShareClick(object sender, RoutedEventArgs e)
+  => LaunchFinderQuickShare();
+
+private void OnFinderQuickShareSidebarTapped(object sender, TappedRoutedEventArgs e)
+  => LaunchFinderQuickShare();
 
     private static string? FindQuickShareTarget(){
       try {
