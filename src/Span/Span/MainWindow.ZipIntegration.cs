@@ -9,6 +9,7 @@ namespace Span
         /// <summary>
         /// Opens a physical ZIP as a read-only archive:// folder. The archive engine and
         /// provider already exist upstream; this connects Windows activation to real navigation.
+        /// This file intentionally lives in src so release CI compiles the ZIP integration itself.
         /// </summary>
         internal void HandleRedirectedArchive(string archivePath, bool createNewTab = true)
         {
