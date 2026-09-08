@@ -18,7 +18,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Apply product patch
-        run: python tools/apply_finderspan_v19.py
+        run: |
+          python tools/apply_finderspan_v19.py
+          sed -i 's/[[:space:]]\+$//' .github/workflows/finder-release.yml
 
       - name: Commit product changes
         run: |
