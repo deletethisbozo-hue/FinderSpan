@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
@@ -61,6 +61,14 @@
             <desktop:ExecutionAlias Alias="spanfinder.exe" />
           </uap3:AppExecutionAlias>
         </uap3:Extension>
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="finderspanzip">
+            <uap:DisplayName>FinderSpan ZIP Archive</uap:DisplayName>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.zip</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
       </Extensions>
     </Application>
   </Applications>

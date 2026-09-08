@@ -8,275 +8,115 @@
     xmlns:helpers="using:Span.Helpers"
     mc:Ignorable="d">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                  Background="{ThemeResource SpanBgMicaBrush}">
-        <StackPanel x:Name="RootPanel" Padding="32,24" Spacing="24">
+    <UserControl.Resources>
+        <Style x:Key="FinderHomeListItemStyle" TargetType="ListViewItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+    </UserControl.Resources>
 
-            <!-- Section 1: Devices and Drives -->
-            <StackPanel Spacing="12">
-                <TextBlock x:Name="DevicesHeader"
-                           Text="Devices and drives"
-                           FontSize="16"
-                           FontWeight="SemiBold"
-                           Foreground="{ThemeResource SpanTextPrimaryBrush}"/>
-
-                <GridView x:Name="DrivesGridView"
-                          ItemsSource="{x:Bind LocalDrives, Mode=OneWay}"
-                          IsItemClickEnabled="True"
-                          ItemClick="OnDriveItemClick"
-                          SelectionMode="None">
-                    <GridView.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <ItemsWrapGrid Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                    </GridView.ItemsPanel>
-                    <GridView.ItemContainerStyle>
-                        <Style TargetType="GridViewItem">
-                            <Setter Property="Margin" Value="0,0,8,8"/>
-                            <Setter Property="Padding" Value="0"/>
-                        </Style>
-                    </GridView.ItemContainerStyle>
-                    <GridView.ItemTemplate>
-                        <DataTemplate x:DataType="models:DriveItem">
-                            <Grid Width="220" Height="80"
-                                  Padding="14,10"
-                                  CornerRadius="6"
-                                  Background="{ThemeResource SpanBgLayer2Brush}"
-                                  BorderBrush="{ThemeResource SpanBorderSubtleBrush}"
-                                  BorderThickness="1"
-                                  RightTapped="OnDriveRightTapped">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- Drive Icon -->
-                                <FontIcon Grid.Column="0"
-                                          FontFamily="{StaticResource RemixIcons}"
-                                          Glyph="{x:Bind IconGlyph}"
-                                          FontSize="28"
-                                          Foreground="{ThemeResource SpanAccentBrush}"
-                                          VerticalAlignment="Center"
-                                          Margin="0,0,12,0"/>
-
-                                <!-- Drive Info -->
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                                    <TextBlock Text="{x:Bind Name}"
-                                               FontSize="12"
-                                               FontWeight="SemiBold"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxLines="1"/>
-                                    <ProgressBar Value="{x:Bind UsagePercent}"
-                                                 Maximum="100"
-                                                 Height="4"
-                                                 CornerRadius="2"/>
-                                    <TextBlock Text="{x:Bind SizeDescription}"
-                                               FontSize="10"
-                                               Foreground="{ThemeResource SpanTextTertiaryBrush}"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxLines="1"/>
-                                </StackPanel>
-                            </Grid>
-                        </DataTemplate>
-                    </GridView.ItemTemplate>
-                </GridView>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Background="#FFFFFF">
+        <StackPanel x:Name="RootPanel" Padding="28,22,34,32" Spacing="18">
+            <StackPanel Spacing="7">
+                <TextBlock x:Name="DevicesHeader" Text="Devices and drives" FontSize="11" FontWeight="SemiBold" Foreground="#777777" Margin="6,0,0,0"/>
+                <Border Background="#FBFBFB" BorderBrush="#E2E2E2" BorderThickness="1" CornerRadius="9">
+                    <ListView x:Name="DrivesGridView" ItemsSource="{x:Bind LocalDrives, Mode=OneWay}" IsItemClickEnabled="True"
+                              ItemClick="OnDriveItemClick" SelectionMode="None" ItemContainerStyle="{StaticResource FinderHomeListItemStyle}">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:DriveItem">
+                                <Grid MinHeight="50" Padding="12,6" RightTapped="OnDriveRightTapped">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34"/><ColumnDefinition Width="*"/><ColumnDefinition Width="190"/><ColumnDefinition Width="20"/>
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon Grid.Column="0" FontFamily="{StaticResource RemixIcons}" Glyph="{x:Bind IconGlyph}" FontSize="21"
+                                              Foreground="{ThemeResource SpanAccentBrush}" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                                        <TextBlock Text="{x:Bind Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{x:Bind SizeDescription}" FontSize="10" Foreground="#8A8A8A" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                    <ProgressBar Grid.Column="2" Value="{x:Bind UsagePercent}" Maximum="100" Height="4" CornerRadius="2"
+                                                 VerticalAlignment="Center" Margin="14,0,12,0"/>
+                                    <FontIcon Grid.Column="3" Glyph="&#xE76C;" FontSize="10" Foreground="#A0A0A0" VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Border>
             </StackPanel>
 
-            <!-- Section 2: Cloud Storage (hidden when empty) -->
-            <StackPanel x:Name="CloudSection" Spacing="12"
-                        Visibility="{x:Bind HasCloudDrives}">
-                <TextBlock x:Name="CloudHeader"
-                           Text="Cloud storage"
-                           FontSize="16"
-                           FontWeight="SemiBold"
-                           Foreground="{ThemeResource SpanTextPrimaryBrush}"/>
-
-                <GridView x:Name="CloudDrivesGridView"
-                          ItemsSource="{x:Bind CloudDrivesList, Mode=OneWay}"
-                          IsItemClickEnabled="True"
-                          ItemClick="OnDriveItemClick"
-                          SelectionMode="None">
-                    <GridView.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <ItemsWrapGrid Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                    </GridView.ItemsPanel>
-                    <GridView.ItemContainerStyle>
-                        <Style TargetType="GridViewItem">
-                            <Setter Property="Margin" Value="0,0,8,8"/>
-                            <Setter Property="Padding" Value="0"/>
-                        </Style>
-                    </GridView.ItemContainerStyle>
-                    <GridView.ItemTemplate>
-                        <DataTemplate x:DataType="models:DriveItem">
-                            <Grid Width="220" Height="80"
-                                  Padding="14,10"
-                                  CornerRadius="6"
-                                  Background="{ThemeResource SpanBgLayer2Brush}"
-                                  BorderBrush="{ThemeResource SpanBorderSubtleBrush}"
-                                  BorderThickness="1"
-                                  RightTapped="OnDriveRightTapped">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- Cloud Icon -->
-                                <FontIcon Grid.Column="0"
-                                          FontFamily="{StaticResource RemixIcons}"
-                                          Glyph="{x:Bind IconGlyph}"
-                                          FontSize="28"
-                                          Foreground="{ThemeResource SpanAccentBrush}"
-                                          VerticalAlignment="Center"
-                                          Margin="0,0,12,0"/>
-
-                                <!-- Cloud Drive Info -->
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                                    <TextBlock Text="{x:Bind Name}"
-                                               FontSize="12"
-                                               FontWeight="SemiBold"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxLines="1"/>
-                                    <TextBlock Text="{x:Bind SizeDescription}"
-                                               FontSize="10"
-                                               Foreground="{ThemeResource SpanTextTertiaryBrush}"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxLines="1"
-                                               Visibility="{x:Bind helpers:VisibilityHelper.FromNonEmpty(SizeDescription)}"/>
-                                </StackPanel>
-                            </Grid>
-                        </DataTemplate>
-                    </GridView.ItemTemplate>
-                </GridView>
+            <StackPanel x:Name="CloudSection" Spacing="7" Visibility="{x:Bind HasCloudDrives}">
+                <TextBlock x:Name="CloudHeader" Text="Cloud storage" FontSize="11" FontWeight="SemiBold" Foreground="#777777" Margin="6,0,0,0"/>
+                <Border Background="#FBFBFB" BorderBrush="#E2E2E2" BorderThickness="1" CornerRadius="9">
+                    <ListView x:Name="CloudDrivesGridView" ItemsSource="{x:Bind CloudDrivesList, Mode=OneWay}" IsItemClickEnabled="True"
+                              ItemClick="OnDriveItemClick" SelectionMode="None" ItemContainerStyle="{StaticResource FinderHomeListItemStyle}">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:DriveItem">
+                                <Grid MinHeight="46" Padding="12,5" RightTapped="OnDriveRightTapped">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/><ColumnDefinition Width="20"/></Grid.ColumnDefinitions>
+                                    <FontIcon Grid.Column="0" FontFamily="{StaticResource RemixIcons}" Glyph="{x:Bind IconGlyph}" FontSize="20"
+                                              Foreground="{ThemeResource SpanAccentBrush}" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                                        <TextBlock Text="{x:Bind Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{x:Bind SizeDescription}" FontSize="10" Foreground="#8A8A8A" TextTrimming="CharacterEllipsis"
+                                                   Visibility="{x:Bind helpers:VisibilityHelper.FromNonEmpty(SizeDescription)}"/>
+                                    </StackPanel>
+                                    <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="10" Foreground="#A0A0A0" VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Border>
             </StackPanel>
 
-            <!-- Section 3: Network and Remote (hidden when empty) -->
-            <StackPanel x:Name="NetworkSection" Spacing="12"
-                        Visibility="{x:Bind HasNetworkDrives}">
-                <TextBlock x:Name="NetworkHeader"
-                           Text="Network locations"
-                           FontSize="16"
-                           FontWeight="SemiBold"
-                           Foreground="{ThemeResource SpanTextPrimaryBrush}"/>
-
-                <GridView x:Name="NetworkDrivesGridView"
-                          ItemsSource="{x:Bind NetworkDrivesList, Mode=OneWay}"
-                          IsItemClickEnabled="True"
-                          ItemClick="OnDriveItemClick"
-                          SelectionMode="None">
-                    <GridView.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <ItemsWrapGrid Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                    </GridView.ItemsPanel>
-                    <GridView.ItemContainerStyle>
-                        <Style TargetType="GridViewItem">
-                            <Setter Property="Margin" Value="0,0,8,8"/>
-                            <Setter Property="Padding" Value="0"/>
-                        </Style>
-                    </GridView.ItemContainerStyle>
-                    <GridView.ItemTemplate>
-                        <DataTemplate x:DataType="models:DriveItem">
-                            <Grid Width="220" Height="80"
-                                  Padding="14,10"
-                                  CornerRadius="6"
-                                  Background="{ThemeResource SpanBgLayer2Brush}"
-                                  BorderBrush="{ThemeResource SpanBorderSubtleBrush}"
-                                  BorderThickness="1"
-                                  RightTapped="OnDriveRightTapped">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- Network Icon -->
-                                <FontIcon Grid.Column="0"
-                                          FontFamily="{StaticResource RemixIcons}"
-                                          Glyph="{x:Bind IconGlyph}"
-                                          FontSize="28"
-                                          Foreground="{ThemeResource SpanTextSecondaryBrush}"
-                                          VerticalAlignment="Center"
-                                          Margin="0,0,12,0"/>
-
-                                <!-- Network Drive Info -->
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                                    <TextBlock Text="{x:Bind Name}"
-                                               FontSize="12"
-                                               FontWeight="SemiBold"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxLines="1"/>
-                                    <TextBlock Text="{x:Bind SizeDescription}"
-                                               FontSize="10"
-                                               Foreground="{ThemeResource SpanTextTertiaryBrush}"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxLines="1"
-                                               Visibility="{x:Bind helpers:VisibilityHelper.FromNonEmpty(SizeDescription)}"/>
-                                </StackPanel>
-                            </Grid>
-                        </DataTemplate>
-                    </GridView.ItemTemplate>
-                </GridView>
+            <StackPanel x:Name="NetworkSection" Spacing="7" Visibility="{x:Bind HasNetworkDrives}">
+                <TextBlock x:Name="NetworkHeader" Text="Network locations" FontSize="11" FontWeight="SemiBold" Foreground="#777777" Margin="6,0,0,0"/>
+                <Border Background="#FBFBFB" BorderBrush="#E2E2E2" BorderThickness="1" CornerRadius="9">
+                    <ListView x:Name="NetworkDrivesGridView" ItemsSource="{x:Bind NetworkDrivesList, Mode=OneWay}" IsItemClickEnabled="True"
+                              ItemClick="OnDriveItemClick" SelectionMode="None" ItemContainerStyle="{StaticResource FinderHomeListItemStyle}">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:DriveItem">
+                                <Grid MinHeight="46" Padding="12,5" RightTapped="OnDriveRightTapped">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/><ColumnDefinition Width="20"/></Grid.ColumnDefinitions>
+                                    <FontIcon Grid.Column="0" FontFamily="{StaticResource RemixIcons}" Glyph="{x:Bind IconGlyph}" FontSize="20" Foreground="#6E6E6E" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                                        <TextBlock Text="{x:Bind Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{x:Bind SizeDescription}" FontSize="10" Foreground="#8A8A8A" TextTrimming="CharacterEllipsis"
+                                                   Visibility="{x:Bind helpers:VisibilityHelper.FromNonEmpty(SizeDescription)}"/>
+                                    </StackPanel>
+                                    <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="10" Foreground="#A0A0A0" VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Border>
             </StackPanel>
 
-            <!-- Section 4: Favorites -->
-            <StackPanel Spacing="12">
-                <TextBlock x:Name="FavoritesHeader"
-                           Text="Favorites"
-                           FontSize="16"
-                           FontWeight="SemiBold"
-                           Foreground="{ThemeResource SpanTextPrimaryBrush}"/>
-
-                <GridView x:Name="FavoritesGridView"
-                          ItemsSource="{x:Bind Favorites, Mode=OneWay}"
-                          IsItemClickEnabled="True"
-                          ItemClick="OnFavoriteItemClick"
-                          ContainerContentChanging="OnFavoriteContainerContentChanging"
-                          SelectionMode="None">
-                    <GridView.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <ItemsWrapGrid Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                    </GridView.ItemsPanel>
-                    <GridView.ItemContainerStyle>
-                        <Style TargetType="GridViewItem">
-                            <Setter Property="Margin" Value="0,0,8,8"/>
-                            <Setter Property="Padding" Value="0"/>
-                        </Style>
-                    </GridView.ItemContainerStyle>
-                    <GridView.ItemTemplate>
-                        <DataTemplate x:DataType="models:FavoriteItem">
-                            <Grid Width="120" Height="80"
-                                  Padding="12"
-                                  CornerRadius="6"
-                                  Background="{ThemeResource SpanBgLayer2Brush}"
-                                  BorderBrush="{ThemeResource SpanBorderSubtleBrush}"
-                                  BorderThickness="1"
-                                  RightTapped="OnFavoriteRightTapped">
-                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6">
-                                    <Grid HorizontalAlignment="Center">
-                                        <!-- desktop.ini 커스텀 아이콘 (Issue #39 a) -->
-                                        <Image Source="{x:Bind CustomIcon, Mode=OneWay}"
-                                               Visibility="{x:Bind CustomIconVisibility, Mode=OneWay}"
-                                               Width="24" Height="24"/>
-                                        <!-- 기본 글리프 -->
-                                        <FontIcon FontFamily="{StaticResource RemixIcons}"
-                                                  Glyph="{x:Bind IconGlyph}"
-                                                  Foreground="{x:Bind IconBrush}"
-                                                  FontSize="24"
-                                                  Visibility="{x:Bind GlyphVisibility, Mode=OneWay}"/>
+            <StackPanel Spacing="7">
+                <TextBlock x:Name="FavoritesHeader" Text="Favorites" FontSize="11" FontWeight="SemiBold" Foreground="#777777" Margin="6,0,0,0"/>
+                <Border Background="#FBFBFB" BorderBrush="#E2E2E2" BorderThickness="1" CornerRadius="9">
+                    <ListView x:Name="FavoritesGridView" ItemsSource="{x:Bind Favorites, Mode=OneWay}" IsItemClickEnabled="True"
+                              ItemClick="OnFavoriteItemClick" ContainerContentChanging="OnFavoriteContainerContentChanging" SelectionMode="None"
+                              ItemContainerStyle="{StaticResource FinderHomeListItemStyle}">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:FavoriteItem">
+                                <Grid MinHeight="44" Padding="12,4" RightTapped="OnFavoriteRightTapped">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition Width="*"/><ColumnDefinition Width="20"/></Grid.ColumnDefinitions>
+                                    <Grid Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                        <Image Source="{x:Bind CustomIcon, Mode=OneWay}" Visibility="{x:Bind CustomIconVisibility, Mode=OneWay}" Width="20" Height="20"/>
+                                        <FontIcon FontFamily="{StaticResource RemixIcons}" Glyph="{x:Bind IconGlyph}" Foreground="{x:Bind IconBrush}"
+                                                  FontSize="19" Visibility="{x:Bind GlyphVisibility, Mode=OneWay}"/>
                                     </Grid>
-                                    <TextBlock Text="{x:Bind Name}"
-                                               FontSize="12"
-                                               TextAlignment="Center"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxLines="1"/>
-                                </StackPanel>
-                            </Grid>
-                        </DataTemplate>
-                    </GridView.ItemTemplate>
-                </GridView>
+                                    <TextBlock Grid.Column="1" Text="{x:Bind Name}" FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="10" Foreground="#A0A0A0" VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Border>
             </StackPanel>
-
         </StackPanel>
     </ScrollViewer>
 </UserControl>

@@ -343,3 +343,33 @@ $t = $t.Replace('Alias="spanfinder.exe"', 'Alias="finderspan.exe"')
 WriteText $manifest $t
 
 Write-Host "FinderSpan Finder skin applied with real Windows sidebar, Quick Share detection, tabs and navigation restored." -ForegroundColor Green
+
+
+# FinderSpan v19 presentation-only polish
+# Keep every real handler/data source. Only refine geometry and appearance.
+$t = ReadText $main
+$t = $t.Replace('<ColumnDefinition x:Name="SidebarCol" Width="244"/>','<ColumnDefinition x:Name="SidebarCol" Width="236"/>')
+$t = [regex]::Replace($t, '(<Grid x:Name="LeftPaneContainer"[^>]*\s)Background="#FFFFFF"', '$1Background="#F3F3F3"', 1)
+$t = $t.Replace('<Grid x:Name="FinderToolbar" Grid.Row="0" Height="{StaticResource CommandBarHeight}" Background="#EFEFEF" BorderBrush="#C9C9C9"', '<Grid x:Name="FinderToolbar" Grid.Row="0" Height="50" Background="#F4F4F4" BorderBrush="#D8D8D8"')
+$t = $t.Replace('<Grid x:Name="AppTitleBar" Grid.Row="1" Height="{StaticResource TitleBarHeight}" Background="#EFEFEF"', '<Grid x:Name="AppTitleBar" Grid.Row="1" Height="{StaticResource TitleBarHeight}" Background="#F4F4F4"')
+$t = $t.Replace('<Grid Height="34" VerticalAlignment="Bottom"', '<Grid Height="30" Margin="2,2,0,2" VerticalAlignment="Center"')
+$t = [regex]::Replace($t, '(<Border Grid.ColumnSpan="2"\s+)Background="\{ThemeResource SpanBgLayer1Brush\}"\s+CornerRadius="6,6,0,0"', '$1Background="#FFFFFF" CornerRadius="7"', 1)
+$t = [regex]::Replace($t, '(<Border Grid.ColumnSpan="2"\s+)BorderBrush="\{ThemeResource SpanAccentDimBrush\}"\s+BorderThickness="1" CornerRadius="6,6,0,0"', '$1BorderBrush="#D8D8D8" BorderThickness="0" CornerRadius="7"', 1)
+$t = [regex]::Replace($t, '(<Border Grid.ColumnSpan="2"\s+)BorderBrush="\{ThemeResource SpanAccentDimBrush\}"\s+BorderThickness="1,1,1,0" CornerRadius="6,6,0,0"', '$1BorderBrush="#D0D0D0" BorderThickness="1" CornerRadius="7"', 1)
+$t = $t.Replace('Width="34" Height="34" VerticalAlignment="Bottom"', 'Width="30" Height="30" VerticalAlignment="Center"')
+$t = $t.Replace('<Grid Height="27" Margin="3,1" Padding="8,0" Background="Transparent"', '<Grid Height="27" Margin="3,1" Padding="8,0" CornerRadius="5" Background="Transparent"')
+$t = $t.Replace('<Grid Height="26" Margin="3,1" Padding="8,0,6,0"', '<Grid Height="26" Margin="3,1" Padding="8,0,6,0" CornerRadius="5"')
+WriteText $main $t
+
+# Details semantics stay truthful: Name / Date Modified / Kind / Size.
+$t = ReadText $details
+$t = [regex]::Replace($t, '(<Button x:Name="TypeHeaderButton"\s+)Content="[^"]+"([\s\S]*?)Tag="[^"]+"', '$1Content="Kind"$2Tag="Type"', 1)
+$t = [regex]::Replace($t, '(<Button x:Name="SizeHeaderButton"\s+)Content="[^"]+"([\s\S]*?)Tag="[^"]+"', '$1Content="Size"$2Tag="Size"', 1)
+$t = $t.Replace('Background="#F8F8F8"','Background="#FAFAFA"')
+$t = $t.Replace('BorderBrush="#D5D5D5"','BorderBrush="#E1E1E1"')
+WriteText $details $t
+
+$t = ReadText $detailsCs
+$t = [regex]::Replace($t, 'TypeHeaderButton\.Content\s*=\s*[^;]+;\s*SizeHeaderButton\.Content\s*=\s*[^;]+;', 'TypeHeaderButton.Content = "Kind";`r`n            SizeHeaderButton.Content = _loc.Get("Size");', 1)
+$t = $t.Replace('TypeHeaderButton.Content = "Kind";`r`n            SizeHeaderButton.Content = _loc.Get("Size");', "TypeHeaderButton.Content = `"Kind`";`r`n            SizeHeaderButton.Content = _loc.Get(`"Size`");")
+WriteText $detailsCs $t

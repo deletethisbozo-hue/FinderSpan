@@ -1,4 +1,4 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -138,6 +138,11 @@ namespace Span
         internal void HandleRedirectedFile(string filePath)
         {
             if (_isClosed || ViewModel == null) return;
+            if (Helpers.ArchivePathHelper.IsBrowsableArchive(filePath))
+            {
+                HandleRedirectedArchive(filePath);
+                return;
+            }
             var parentDir = System.IO.Path.GetDirectoryName(filePath);
             if (string.IsNullOrEmpty(parentDir) || !System.IO.Directory.Exists(parentDir)) return;
 
@@ -969,6 +974,11 @@ namespace Span
                                     UpdateViewModeVisibility();
                                 }
                                 _ = ViewModel.ActiveExplorer?.NavigateToPath(jumpArg);
+                            }
+                            else if (System.IO.File.Exists(jumpArg) && Helpers.ArchivePathHelper.IsBrowsableArchive(jumpArg))
+                            {
+                                Helpers.DebugLogger.Log($"[Startup] ZIP archive argument: {jumpArg}");
+                                HandleRedirectedArchive(jumpArg, createNewTab: false);
                             }
                             else if (System.IO.File.Exists(jumpArg))
                             {

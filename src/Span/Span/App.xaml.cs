@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
 using System;
@@ -633,6 +633,18 @@ namespace Span
                         }
                     }
 
+                    // FinderSpan: Initial file activation (.zip association)
+                    if (activatedArgs.Kind == Microsoft.Windows.AppLifecycle.ExtendedActivationKind.File)
+                    {
+                        var fileData = activatedArgs.Data as Windows.ApplicationModel.Activation.IFileActivatedEventArgs;
+                        var storageFile = fileData?.Files?.OfType<Windows.Storage.StorageFile>().FirstOrDefault();
+                        if (storageFile != null && Helpers.ArchivePathHelper.IsBrowsableArchive(storageFile.Path))
+                        {
+                            StartupArguments = storageFile.Path;
+                            Helpers.DebugLogger.Log($"[App] File activation ZIP: {storageFile.Path}");
+                        }
+                    }
+
                     // Fallback: Environment.GetCommandLineArgs (AppExecutionAlias 대응)
                     if (string.IsNullOrEmpty(StartupArguments))
                     {
@@ -700,6 +712,15 @@ namespace Span
                     var launchData = args.Data as Windows.ApplicationModel.Activation.ILaunchActivatedEventArgs;
                     if (!string.IsNullOrEmpty(launchData?.Arguments))
                         folderPath = ExtractFolderArgument(launchData.Arguments);
+                }
+
+                // FinderSpan: Redirected file activation (.zip association)
+                if (args.Kind == ExtendedActivationKind.File)
+                {
+                    var fileData = args.Data as Windows.ApplicationModel.Activation.IFileActivatedEventArgs;
+                    var storageFile = fileData?.Files?.OfType<Windows.Storage.StorageFile>().FirstOrDefault();
+                    if (storageFile != null)
+                        folderPath = storageFile.Path;
                 }
 
                 // UI 스레드에서 처리

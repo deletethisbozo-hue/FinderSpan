@@ -42,6 +42,11 @@ namespace Span.Helpers
                         MainWindow.OpenArchiveEntryStaticAsync(file.Path);
                         DebugLogger.Log($"[{viewName}] Extracting archive entry {file.Name}");
                     }
+                    else if (ArchivePathHelper.IsBrowsableArchive(file.Path))
+                    {
+                        _ = explorer!.NavigateToPath(ArchivePathHelper.Combine(file.Path, string.Empty));
+                        DebugLogger.Log($"[{viewName}] Browsing ZIP archive {file.Name}");
+                    }
                     else if (file.Path.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
                     {
                         // .lnk 바로가기: 대상이 폴더면 네비게이션, 파일이면 ShellExecute
