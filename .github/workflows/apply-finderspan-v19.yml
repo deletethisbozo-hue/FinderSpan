@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
 jobs:
   patch:
@@ -20,7 +19,8 @@ jobs:
       - name: Apply product patch
         run: |
           python tools/apply_finderspan_v19.py
-          sed -i 's/[[:space:]]\+$//' .github/workflows/finder-release.yml
+          git checkout -- .github/workflows/finder-release.yml
+          git checkout -- .github/workflows/apply-finderspan-v19.yml
 
       - name: Commit product changes
         run: |
@@ -30,8 +30,3 @@ jobs:
           git diff --cached --check
           git commit -m "feat: polish Finder UI and integrate ZIP browsing"
           git push
-
-      - name: Dispatch release build
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run finder-release.yml --ref main
